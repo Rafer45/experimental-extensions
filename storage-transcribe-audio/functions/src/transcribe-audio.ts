@@ -11,7 +11,7 @@ import {
 } from "./types";
 import * as logs from "./logs";
 import config from "./config";
-import { probePromise, isTaggedStringArray, separateByTags } from "./util";
+import { probePromise, isTaggedStringArray, separateByTags, isNullFreeList, getTaggedTranscriptOrNull } from "./util";
 
 const encoding = "LINEAR16";
 const TRANSCODE_TARGET_FILE_EXTENSION = ".wav";
@@ -61,9 +61,25 @@ export async function transcribeAndUpload({
   }
 
   logs.receivedLongRunningRecognizeResponse(response);
-  const taggedTranscription = response.results?.map(
+  if (response.results == null) {
+    return {
+      state: "failure",
+      warnings,
+      type: FailureType.NULL_TRANSCRIPTION,
+    };
+  }
+
+  if (!isNullFreeList(response.results.map(getTaggedTranscriptOrNull))) {
+    return {
+      state: "failure",
+      warnings,
+      type: FailureType.NULL_TRANSCRIPTION,
+    };
+  }
+
+  const taggedTranscription = response.results.map(
     (result) =>
-      [result?.channelTag, result?.alternatives?.[0].transcript] as const
+      ([result.channelTag, result.alternatives?.[0].transcript] as const)
   );
 
   if (!isTaggedStringArray(taggedTranscription)) {

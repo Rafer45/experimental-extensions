@@ -7,6 +7,7 @@ import {
   warningTypeToMessage,
 } from "./types";
 import { Channel } from "firebase-admin/eventarc";
+import { google } from "@google-cloud/speech/build/protos/protos";
 
 export function errorFromAny(anyErr: any): Error {
   let error: Error;
@@ -20,6 +21,18 @@ export function errorFromAny(anyErr: any): Error {
   }
 
   return error;
+}
+
+export function isNullFreeList<T>(
+  list: (NonNullable<T> | null | undefined)[]
+): list is NonNullable<T>[] {
+  return list.every((item) => item != null);
+}
+
+export function getTaggedTranscriptOrNull(
+  list: google.cloud.speech.v1.ISpeechRecognitionResult[]
+): [number, string][] | null {
+  const channelTag = [result.channelTag, result.alternatives?.[0].transcript];
 }
 
 export function isTaggedStringArray(
