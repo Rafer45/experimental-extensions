@@ -104,16 +104,11 @@ export async function transcribeAndUpload({
   };
 }
 
-export async function transcodeToLinear16AndUpload({
-  localCopyPath,
-  storageOutputPath,
-  bucket,
-}: {
-  localCopyPath: string;
-  storageOutputPath: string;
-  bucket: Bucket;
-}): Promise<TranscodeAudioResult> {
-  const probeData: ffmpeg.FfprobeData = await probePromise(localCopyPath);
+export async function transcodeToLinear16AndUpload(
+  tempCopyPath: string,
+  bucket: Bucket
+): Promise<TranscodeAudioResult> {
+  const probeData: ffmpeg.FfprobeData = await probePromise(tempCopyPath);
   const warnings: WarningType[] = [];
 
   logs.debug("probe data before transcription:", probeData);
@@ -147,12 +142,12 @@ export async function transcodeToLinear16AndUpload({
     };
   }
 
-  const localOutputPath = localCopyPath + TRANSCODE_TARGET_FILE_EXTENSION;
+  const tempTranscodedPath = tempCopyPath + TRANSCODE_TARGET_FILE_EXTENSION;
   logs.debug("transcoding locally");
   try {
     await transcodeLocally({
-      inputPath: localCopyPath,
-      outputPath: localOutputPath,
+      inputPath: tempCopyPath,
+      outputPath: tempTranscodedPath,
     });
   } catch (error: unknown) {
     const { err, stdout, stderr } = error as {
@@ -173,21 +168,21 @@ export async function transcodeToLinear16AndUpload({
   }
   logs.debug("finished transcoding locally");
 
-  logs.debug("uploading transcoded file");
-  const uploadResponse = await bucket.upload(localOutputPath, {
-    destination: storageOutputPath,
-    metadata: { metadata: { isTranscodeOutput: true } },
-  });
-  logs.debug("uploaded transcoded file");
-
   return {
     state: "success",
     sampleRateHertz: streams[0].sample_rate,
     audioChannelCount: streams[0].channels,
-    uploadResponse,
-    outputPath: storageOutputPath,
     warnings,
   };
+}
+
+export async function uploadLocalFile() {
+  logs.debug("uploading transcoded file");
+  const uploadResponse = await bucket.upload(tempTranscodedPath, {
+    destination: storageOutputPath,
+    metadata: { metadata: { isTranscodeOutput: true } },
+  });
+  logs.debug("uploaded transcoded file");
 }
 
 async function transcodeLocally({
