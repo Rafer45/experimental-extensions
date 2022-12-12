@@ -30,9 +30,15 @@ export function isNullFreeList<T>(
 }
 
 export function getTaggedTranscriptOrNull(
-  list: google.cloud.speech.v1.ISpeechRecognitionResult[]
-): [number, string][] | null {
-  const channelTag = [result.channelTag, result.alternatives?.[0].transcript];
+  result: google.cloud.speech.v1.ISpeechRecognitionResult
+): [number, string] | null {
+  const channelTag = result?.channelTag;
+  const transcription = result.alternatives?.[0].transcript;
+  if (channelTag == null || transcription == null) {
+    return null;
+  }
+
+  return [channelTag, transcription];
 }
 
 export function isTaggedStringArray(
