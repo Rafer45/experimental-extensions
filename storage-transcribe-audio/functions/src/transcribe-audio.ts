@@ -104,13 +104,15 @@ export async function transcribeAndUpload({
   };
 }
 
-export async function transcodeToLinear16AndUpload(
-  {
-    localCopyPath,
-    storageOutputPath,
-  }: { localCopyPath: string; storageOutputPath: string },
-  bucket: Bucket
-): Promise<TranscodeAudioResult> {
+export async function transcodeToLinear16AndUpload({
+  localCopyPath,
+  storageOutputPath,
+  bucket,
+}: {
+  localCopyPath: string;
+  storageOutputPath: string;
+  bucket: Bucket;
+}): Promise<TranscodeAudioResult> {
   const probeData: ffmpeg.FfprobeData = await probePromise(localCopyPath);
   const warnings: WarningType[] = [];
 

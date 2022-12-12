@@ -89,13 +89,11 @@ export const transcribeAudio = functions.storage
       await remoteFile.download({ destination: localCopyPath });
       logs.audioDownloaded(filePath, localCopyPath);
 
-      const transcodeResult = await transcodeToLinear16AndUpload(
-        {
-          localCopyPath,
-          storageOutputPath: "out.wav",
-        },
-        bucket
-      );
+      const transcodeResult = await transcodeToLinear16AndUpload({
+        localCopyPath,
+        storageOutputPath: "out.wav",
+        bucket,
+      });
 
       if (transcodeResult.state === "failure") {
         logs.transcodingFailed(transcodeResult);
