@@ -26,6 +26,7 @@ import {
   publishFailureEvent,
   errorFromAny,
   publishCompleteEvent,
+  generateTempTranscodedFilename,
 } from "./util";
 import mkdirp = require("mkdirp");
 import {
@@ -54,6 +55,8 @@ export const transcribeAudio = functions.storage
   .object()
   .onFinalize(async (object): Promise<void> => {
     logs.start();
+
+    // Validate the object
     const { contentType } = object; // the MIME type
 
     if (object.metadata && object.metadata.isTranscodeOutput === "true") {
@@ -75,12 +78,13 @@ export const transcribeAudio = functions.storage
       logs.undefinedObjectName(object);
       return;
     }
+    // Finished validating the object
 
     const bucket = admin.storage().bucket(object.bucket);
-    const filePath = object.name;
+    const fileBucketPath = object.name;
 
     try {
-      const localCopyPath: string = path.join(os.tmpdir(), filePath);
+      const localCopyPath: string = path.join(os.tmpdir(), path.basename(fileBucketPath));
       const tempLocalDir = path.dirname(localCopyPath);
 
       logs.tempDirectoryCreating(tempLocalDir);
@@ -103,9 +107,10 @@ export const transcribeAudio = functions.storage
       }
 
       logs.debug("uploading transcoded file");
+      const tempFilename = generateTempTranscodedFilename(new Date(), );
       const transcodedUploadResult = await uploadTranscodedFile({
-        localPath: transcodeResult.outputPath,
-        storagePath: (config.outputCollection || "") + transcodeResult,
+        localPath: transcodeResult.localOutputPath,
+        storagePath: path.join(config.outputCollection, tempFilename),
         bucket: bucket,
       })
       if (transcodedUploadResult.status == Status.FAILURE) {

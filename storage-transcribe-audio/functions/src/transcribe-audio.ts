@@ -173,7 +173,7 @@ export async function transcodeToLinear16(
     status: Status.SUCCESS,
     sampleRateHertz: streams[0].sample_rate,
     audioChannelCount: streams[0].channels,
-    outputPath: localTranscodedPath,
+    localOutputPath: localTranscodedPath,
     warnings,
   };
 }

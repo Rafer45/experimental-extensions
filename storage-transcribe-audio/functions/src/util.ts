@@ -95,3 +95,7 @@ export async function publishCompleteEvent(
     },
   });
 }
+
+export function generateTempTranscodedFilename(date: Date, filename: string): string {
+  return `${filename}_${date.getUTCSeconds}`
+}

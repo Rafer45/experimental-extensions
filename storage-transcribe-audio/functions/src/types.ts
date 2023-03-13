@@ -19,7 +19,7 @@ export interface TranscodeAudioSuccess {
   sampleRateHertz: number;
   warnings: WarningType[];
   audioChannelCount: number;
-  outputPath: string;
+  localOutputPath: string;
 }
 
 export interface TranscribeAudioSuccess {
