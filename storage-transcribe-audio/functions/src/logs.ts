@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import * as functions from "firebase-functions";
 import { google } from "@google-cloud/speech/build/protos/protos";
 import { logger } from "firebase-functions";
 import { ObjectMetadata } from "firebase-functions/v1/storage";
@@ -88,6 +89,10 @@ export function transcodeUploadFailed(failure: Failure) {
   logger.error("Failed to upload transcoded audio", {
     info: messageify(failure),
   });
+}
+
+export function objectSkipped(object: functions.storage.ObjectMetadata) {
+  logger.info(`Skipped transcoding of object ${object.name}.`)
 }
 
 export function transcribingFailed(failure: Failure) {

@@ -26,6 +26,7 @@ import {
   publishFailureEvent,
   errorFromAny,
   publishCompleteEvent,
+  generateTempTranscodedFilename,
 } from "./util";
 import mkdirp = require("mkdirp");
 import {
@@ -54,43 +55,28 @@ export const transcribeAudio = functions.storage
   .object()
   .onFinalize(async (object): Promise<void> => {
     logs.start();
-    const { contentType } = object; // the MIME type
 
-    if (object.metadata && object.metadata.isTranscodeOutput === "true") {
-      logs.audioAlreadyProcessed();
-      return;
-    }
-
-    if (!contentType) {
-      logs.noContentType();
-      return;
-    }
-
-    if (!contentType.startsWith("audio/")) {
-      logs.contentTypeInvalid(contentType);
-      return;
-    }
-
-    if (object.name === undefined) {
-      logs.undefinedObjectName(object);
+    if (!isValidObject(object)) {
+      logs.objectSkipped(object)
       return;
     }
 
     const bucket = admin.storage().bucket(object.bucket);
-    const filePath = object.name;
+    const bucketPath = object.name;
+    const base = path.basename(bucketPath)
 
     try {
-      const localCopyPath: string = path.join(os.tmpdir(), filePath);
+      const localCopyPath: string = path.join(os.tmpdir(), base);
       const tempLocalDir = path.dirname(localCopyPath);
 
       logs.tempDirectoryCreating(tempLocalDir);
       await mkdirp(tempLocalDir);
       logs.tempDirectoryCreated(tempLocalDir);
 
-      const remoteFile = bucket.file(filePath);
-      logs.audioDownloading(filePath);
+      const remoteFile = bucket.file(bucketPath);
+      logs.audioDownloading(bucketPath);
       await remoteFile.download({ destination: localCopyPath });
-      logs.audioDownloaded(filePath, localCopyPath);
+      logs.audioDownloaded(bucketPath, localCopyPath);
 
       const transcodeResult = await transcodeToLinear16(localCopyPath);
 
@@ -103,9 +89,10 @@ export const transcribeAudio = functions.storage
       }
 
       logs.debug("uploading transcoded file");
+      const tempFilename = generateTempTranscodedFilename(new Date(), base);
       const transcodedUploadResult = await uploadTranscodedFile({
-        localPath: transcodeResult.outputPath,
-        storagePath: (config.outputCollection || "") + transcodeResult,
+        localPath: transcodeResult.localOutputPath,
+        storagePath: path.join(config.outputCollection || bucketPath, tempFilename),
         bucket: bucket,
       })
       if (transcodedUploadResult.status == Status.FAILURE) {
@@ -153,3 +140,29 @@ export const transcribeAudio = functions.storage
       }
     }
   });
+
+function isValidObject(object: functions.storage.ObjectMetadata): object is (functions.storage.ObjectMetadata & {name: string}) {
+  const { contentType } = object; // the MIME type
+
+  if (object.metadata && object.metadata.isTranscodeOutput === "true") {
+    logs.audioAlreadyProcessed();
+    return false;
+  }
+
+  if (!contentType) {
+    logs.noContentType();
+    return false;
+  }
+
+  if (!contentType.startsWith("audio/")) {
+    logs.contentTypeInvalid(contentType);
+    return false;
+  }
+
+  if (object.name === undefined) {
+    logs.undefinedObjectName(object);
+    return false;
+  }
+
+  return true
+}
